@@ -58,7 +58,8 @@ def parser():
     arg_parser.add_argument("-i", "--inputs", nargs="+", help="The name of images or numbering of images")
     arg_parser.add_argument("-d", "--delete", help="Delete from folder")
     arg_parser.add_argument("-f", "--fromf", help="The folder from delete")
-    arg_parser.add_argument("-m", "--move", help="Select switch. Use this if you want to select the [inputs] as better images and move to this")
+    arg_parser.add_argument("-m", "--move", help="Use this if you want to move the [inputs] better images and move to [move] folder")
+    arg_parser.add_argument("-c", "--copy", help="Use this if you want to copy the [inputs] better images and move to this")
     arg_parser.add_argument("-o", "--output", help="Destination folder where to move the selected images")
     # arg_parser.add_help()
     return arg_parser
