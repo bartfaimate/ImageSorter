@@ -13,10 +13,48 @@ import shutil
 # get differencfrom the raw stem-s and the jpg-stems
 
 class ImageSorter:
-    def __init__(self, base_path:Union[str, Path], input_list : List[str] = None):
+    def __init__(self, base_path:Union[str, Path], input_list : List[str]=None):
         self.base_path = Path(base_path) if isinstance(base_path, str) else base_path
-        self.input_list = input_list
-            
+        self._input_list = input_list
+
+
+    def set_input_list(self, input_list):
+        self._input_list = input_list
+
+    def delete(self, input_list: List[str]):
+        for selected in self.select_files(input_list):
+            print(f"Deleting {selected}")
+            os.remove(selected) 
+    
+    def prepare_dir(self, directory:Union[str, Path]):
+        directory = Path(directory) if isinstance(directory, str) else directory
+
+        if not directory.is_dir():
+            directory.mkdir(parents=True)
+
+    def select_files(self, input_list:List[str]):
+        has_suffix = True if Path(input_list[0]).suffix else False
+        for select in input_list:
+            for file in os.listdir(self.base_path):
+                if ((has_suffix and Path(file).name.endswith(select)) or
+                    (not has_suffix and Path(file).stem.endswith(select))
+                ):
+                    yield self.base_path.joinpath(file)
+
+    def copy(self, dest:Path, input_list:List[str]):
+        self.prepare_dir(dest)
+        for selected in self.select_files(input_list):
+            print(f"Copying {selected} to {dest}...")
+            shutil.copy(selected, dest)
+    
+    def move(self, dest:Path, input_list:List[str]):
+        self.prepare_dir(dest)
+        for selected in self.select_files(input_list):
+            print(f"Moving {selected} to {dest}...")
+            shutil.move(selected.resolve().as_posix(), dest.resolve().as_posix())
+                
+
+
     def get_files(self, folder: Union[str, Path]) -> set:
         _folder = Path(folder) if isinstance(folder, str) else folder
         
