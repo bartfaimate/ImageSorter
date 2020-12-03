@@ -12,15 +12,36 @@ HIGH = 3994
 DIFF = HIGH - LOW
 TEST_DIR = Path(__file__).parent.joinpath("test_images")
 
+def generate_files():
+    raw_dir = TEST_DIR.joinpath("raw")
+    jpeg_dir = TEST_DIR.joinpath("jpeg")
+    raw_dir.mkdir(parents=True)
+    jpeg_dir.mkdir(parents=True)
+
+    for i in range(LOW-10, HIGH+10):
+        with open(jpeg_dir.joinpath(f"DSC0{i}.JPG"), "w") as jpg:
+            jpg.write(f"DSC0{i}.JPG")
+        with open(raw_dir.joinpath(f"DSC0{i}.RAW"), "w") as raw:
+            raw.write(f"DSC0{i}.RAW")
+
+def destroy_files():
+    shutil.rmtree(TEST_DIR)
+
 class TestSortImages(unittest.TestCase):
-    
+
+    def setUp(self) -> None:
+        generate_files()
+
+    def tearDown(self) -> None:
+        destroy_files()
+
     def test_get_files(self):
         image_sorter = ImageSorter(TEST_DIR)
         files = image_sorter.get_files(TEST_DIR.joinpath("jpeg"))
         raw_files = image_sorter.get_files(TEST_DIR.joinpath("raw"))
 
-        self.assertTrue(len(files) == 70)
-        self.assertTrue(len(raw_files) == 70)
+        self.assertEqual(len(files), DIFF+20)
+        self.assertEqual(len(raw_files), DIFF+20)
 
         self.assertTrue(list(raw_files)[0][0:3] == "DSC")
         self.assertFalse("RAW" in list(raw_files)[0])
