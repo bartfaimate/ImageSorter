@@ -13,18 +13,22 @@ import shutil
 # get differencfrom the raw stem-s and the jpg-stems
 
 class ImageSorter:
-    def __init__(self, base_path:Union[str, Path], input_list : List[str]=None):
+
+    def __init__(self, base_path:Union[str, Path], input_list : List[str]=None, dry_run=False):
         self.base_path = Path(base_path) if isinstance(base_path, str) else base_path
         self._input_list = input_list
+        self.dry_run = dry_run
 
 
     def set_input_list(self, input_list):
         self._input_list = input_list
 
     def delete(self, input_list: List[str]):
+        prefix = "[DRY_RUN] Would delete" if self.dry_run else "Deleting"
         for selected in self.select_files(input_list):
-            print(f"Deleting {selected}")
-            os.remove(selected) 
+            print(f"{prefix} {selected}")
+            if not self.dry_run:
+                os.remove(selected) 
     
     def prepare_dir(self, directory:Union[str, Path]):
         directory = Path(directory) if isinstance(directory, str) else directory
@@ -43,62 +47,38 @@ class ImageSorter:
 
     def copy(self, dest:Path, input_list:List[str]):
         self.prepare_dir(dest)
+        prefix = "[DRY_RUN] Would copy" if self.dry_run else "Copying"
         for selected in self.select_files(input_list):
-            print(f"Copying {selected} to {dest}...")
-            shutil.copy(selected, dest)
+            print(f"{prefix} {selected} to {dest}...")
+            if not self.dry_run:
+                shutil.copy(selected, dest)
     
     def move(self, dest:Path, input_list:List[str]):
         self.prepare_dir(dest)
+        prefix = "[DRY_RUN] Would move" if self.dry_run else "Moving"
         for selected in self.select_files(input_list):
-            print(f"Moving {selected} to {dest}...")
-            shutil.move(selected.resolve().as_posix(), dest.resolve().as_posix())
+            print(f"{prefix} {selected} to {dest}...")
+            if not self.dry_run:
+                shutil.move(selected.resolve().as_posix(), dest.resolve().as_posix())
                 
-
-
     def get_files(self, folder: Union[str, Path]) -> set:
         _folder = Path(folder) if isinstance(folder, str) else folder
         
         filenames = {Path(file).stem for file in os.listdir(_folder)}
         return filenames
 
-    def files_to_remove(self, files:List[str], folder_to_cleanup, suffix=".ARW"):
-        print(f'There are {len(files)} differences')
-        for file in files:
-            to_remove = self.base_path.joinpath(f'{folder_to_cleanup}/{file}').with_suffix(suffix)
-            print(to_remove)
-            os.remove(to_remove)
-
-    def move_selected_to_dest(self, selected_images, output):
-        for selected in selected_images:
-            print(f"Moving {selected} to {output}")
-            shutil.move(selected.as_posix(), output.as_posix())
-
-    def select(self, fromf):
-        folder = self.base_path.joinpath(fromf)
-        files = [Path(f).name for f in os.listdir(folder)]
-        with_suffix =  "." in self.input_list[0]
-
-        # print(files)
-        selecteds = set()
-        for image_name in self.input_list:
-            for file in files:
-                if ( with_suffix and file.lower().endswith(image_name.lower()) or
-                    not with_suffix and Path(file).stem.endswith(image_name)
-                   ):
-                    selecteds.add(folder.joinpath(file))
-        # print("Selected files: ")
-        # print(selecteds)
-        return selecteds
 
 def parser():
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("-b", "--base-path", required=True, help="The base path of the images")
     arg_parser.add_argument("-i", "--inputs", nargs="+", help="The name of images or numbering of images")
-    arg_parser.add_argument("-d", "--delete", help="Delete from folder")
-    arg_parser.add_argument("-f", "--fromf", help="The folder from delete")
-    arg_parser.add_argument("-m", "--move", help="Use this if you want to move the [inputs] better images and move to [move] folder")
-    arg_parser.add_argument("-c", "--copy", help="Use this if you want to copy the [inputs] better images and move to this")
-    arg_parser.add_argument("-o", "--output", help="Destination folder where to move the selected images")
+    arg_parser.add_argument("-d", "--delete", help="Delete from [base-path] folder", action="store_true")
+    arg_parser.add_argument("-m", "--move", help="Use this if you want to move the [inputs] better images and move to [output] folder", 
+                            action="store_true")
+    arg_parser.add_argument("-c", "--copy", help="Use this if you want to copy the [inputs] better images and move to [output]",
+                            action="store_true")
+    arg_parser.add_argument("-o", "--output", dest="output", help="Destination folder where to move the selected images")
+    arg_parser.add_argument("--dry-run", dest="dry_run", action="store_true")
     # arg_parser.add_help()
     return arg_parser
 
@@ -107,43 +87,26 @@ def main():
     args = arg_parser.parse_args()
     # return
     # get jpegs
+    print(args.dry_run)
+    # return
     base_path = Path(args.base_path)
-    image_sorter = ImageSorter(base_path)
+    image_sorter = ImageSorter(base_path, args.dry_run)
     print(f"base path is: {base_path}")
     if args.inputs:
         input_images = args.inputs
         image_sorter.input_list = input_images
-        if not args.output:
-            arg_parser.print_help()
-            raise OSError("No Destination folder is given")
-        dest_folder = Path(args.output)
-        print(f"input images: {input_images}")
-        print(f"output folder: {dest_folder}")
-        # create folder
-        if not dest_folder.is_dir():
-            dest_folder.mkdir(parents=True)
-        if args.move:
-            # select from this fodler and move to destination folder
-            fromf = args.move
-            selected_images = image_sorter.select(fromf)
-            image_sorter.move_selected_to_dest(selected_images, dest_folder)
-            pass
-        elif args.delete :
-            fromf = args.delete
-            selected_images = image_sorter.select(fromf)
-            for selected in selected_images:
-                print(f"Deleting {selected}")
-            pass
+        destination = ""
+        if (args.copy or args.move) and "output" not in args:
+            print("[output] must be given for using copy and move")
+        else:
+            # TODO: create destination folder
+            destination = args.output
+            pass 
+        if args.copy:
+            image_sorter.copy(dest=destination, input_list=input_images)
+        elif args.move:
+            image_sorter.move(dest=destination, input_list=input_images)
 
-    # jpegs = image_sorter.get_files(base_path.joinpath('jpeg'))
-
-    # raws = image_sorter.get_files(base_path.joinpath('raw'))
-    # print(len(jpegs))
-    # print(len(raws))
-
-    # diffs = raws.difference(jpegs)
-    # folder_to_cleanup = "raw"
-    # image_sorter.files_to_remove(diffs, folder_to_cleanup)
 
 
 
