@@ -28,7 +28,7 @@ class ImageSorter:
         for selected in self.select_files(input_list):
             print(f"{prefix} {selected}")
             if not self.dry_run:
-                os.remove(selected) 
+                selected.unlink()
     
     def prepare_dir(self, directory:Union[str, Path]):
         directory = Path(directory) if isinstance(directory, str) else directory
@@ -46,6 +46,7 @@ class ImageSorter:
                     yield self.base_path.joinpath(file)
 
     def copy(self, dest:Path, input_list:List[str]):
+        """ Copy input_list images from base to dest """
         self.prepare_dir(dest)
         prefix = "[DRY_RUN] Would copy" if self.dry_run else "Copying"
         for selected in self.select_files(input_list):
@@ -54,12 +55,24 @@ class ImageSorter:
                 shutil.copy(selected, dest)
     
     def move(self, dest:Path, input_list:List[str]):
+        """ Move input_list images from base to dest """
         self.prepare_dir(dest)
         prefix = "[DRY_RUN] Would move" if self.dry_run else "Moving"
         for selected in self.select_files(input_list):
             print(f"{prefix} {selected} to {dest}...")
             if not self.dry_run:
                 shutil.move(selected.resolve().as_posix(), dest.resolve().as_posix())
+
+    def compare(self, compare_with: Path):
+        compare_with = Path(compare_with) if isinstance(compare_with, str) else compare_with
+        """ Compare folder with base and remove images from this to look like as base"""
+        stayable = set([p.stem for p in self.base_path.iterdir()])
+        compared = set([p.stem for p in compare_with.iterdir()])
+        to_be_remove = compared.difference(stayable)
+        suffix = next(compare_with.iterdir()).suffix()
+        for item in to_be_remove:
+            print(f"Will remove {item}")
+        # raise NotImplemented
                 
     def get_files(self, folder: Union[str, Path]) -> set:
         _folder = Path(folder) if isinstance(folder, str) else folder
@@ -79,6 +92,8 @@ def parser():
                             action="store_true")
     arg_parser.add_argument("-o", "--output", dest="output", help="Destination folder where to move the selected images")
     arg_parser.add_argument("--dry-run", dest="dry_run", action="store_true")
+    arg_parser.add_argument("-C", "--compare", dest="compare", action="store_true", help="Destination folder where to move the selected images")
+
     # arg_parser.add_help()
     return arg_parser
 
@@ -106,6 +121,9 @@ def main():
             image_sorter.copy(dest=destination, input_list=input_images)
         elif args.move:
             image_sorter.move(dest=destination, input_list=input_images)
+    elif args.compare:
+        destination = args.output
+        image_sorter.compare(destination)
 
 
 
