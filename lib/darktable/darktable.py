@@ -1,7 +1,8 @@
 
 from argparse import PARSER
+from lib.darktable.exceptions import WrongImageFormat
 from pathlib import Path
-from typing import List, Union
+from typing import List, Union, Any
 import datetime as dt
 import time
 from .constants import basic_xml_fmt, EXTENSIONS
@@ -9,11 +10,12 @@ from .constants import basic_xml_fmt, EXTENSIONS
 
 class Darktable:
 
-    def __init__(self, 
-                file_numbers: Union[Path, str],
-                base_folder: Union[Path, str]
+    def __init__(self,
+                base_folder: Union[Path, str],
+                file_numbers: Union[Path, str] = ''
                 ) -> None:
-        self.file_numbers = file_numbers if isinstance(file_numbers, Path) else Path(file_numbers)
+        if file_numbers:
+            self.file_numbers = file_numbers if isinstance(file_numbers, Path) else Path(file_numbers)
         self.base_folder = base_folder if isinstance(base_folder, Path) else Path(base_folder)
 
     def get_selection_numbers(self) -> List[str]:
@@ -31,6 +33,11 @@ class Darktable:
 
     def create_xmp(self, image_path: Union[str, Path], rating='1'):
         image_path = image_path if isinstance(image_path, Path) else Path(image_path)
+        
+        if not image_path.suffix.lower() in EXTENSIONS:
+            raise WrongImageFormat(f'The format for the given image is not supported -- {image_path}')
+        if not image_path.is_file():
+            raise WrongImageFormat(f'The format for the given image is not supported -- {image_path}')
 
         xmp_file = Path(str(image_path)+'.xmp')
         if xmp_file.exists():
